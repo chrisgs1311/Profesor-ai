@@ -61,4 +61,35 @@ app.get("/api/dex/search", async (req, res) => {
   }
 });
 
+// Anthropic — análisis con IA (oculta la API key del browser)
+app.post("/api/analyze", async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY no configurada" });
+
+  const { prompt, model = "claude-sonnet-4-5", max_tokens = 800 } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: "prompt requerido" });
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) return res.status(r.status).json(j);
+    const text = (j.content || []).map((c) => c.text || "").join("\n").trim();
+    res.json({ text, raw: j });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`🎯 Crypto Hunter API en puerto ${PORT}`));

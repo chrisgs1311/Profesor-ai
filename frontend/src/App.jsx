@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const fmtUsd = (n) => {
   if (n === null || n === undefined || isNaN(n)) return "—";
@@ -277,22 +277,14 @@ ${summary}`;
 
     (async () => {
       try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
+        const r = await fetch(`${API_BASE}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-5",
-            max_tokens: 800,
-            messages: [{ role: "user", content: prompt }],
-          }),
+          body: JSON.stringify({ prompt }),
         });
-        if (!r.ok) {
-          const t = await r.text();
-          throw new Error(`AI ${r.status}: ${t.slice(0, 200)}`);
-        }
         const j = await r.json();
-        const text = (j.content || []).map((c) => c.text || "").join("\n").trim();
-        setAnalysis(text || "(sin respuesta)");
+        if (!r.ok) throw new Error(j.error || `AI ${r.status}`);
+        setAnalysis(j.text || "(sin respuesta)");
       } catch (e) {
         setError(e.message);
       } finally {
